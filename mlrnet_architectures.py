@@ -41,3 +41,38 @@ mlrnetdeepv1 = {"lr_scheduler" : "OneCycleLR",
                 "hidden_nn" : architectures.DenseLayers,
                 "hidden_params" :  {"width":1024,"depth":4}           
                 }
+mlrnetw2048 = {"lr_scheduler" : "OneCycleLR",
+                "lr_scheduler_params" : {"max_lr":1e-3, "total_steps" : 500},
+                "max_iter":500,
+                "learning_rate":1e-4, #useless with OneCycleLR
+                "hidden_nn" : architectures.DenseLayers,
+                "hidden_params" :  {"width":2048,"depth":2}           
+                }
+mlrnetw4096 = {"lr_scheduler" : "OneCycleLR",
+                "lr_scheduler_params" : {"max_lr":1e-3, "total_steps" : 500},
+                "max_iter":500,
+                "learning_rate":1e-4, #useless with OneCycleLR
+                "hidden_nn" : architectures.DenseLayers,
+                "hidden_params" :  {"width":4096,"depth":2}           
+                }
+mlrnetw8192 = {"lr_scheduler" : "OneCycleLR",
+                "lr_scheduler_params" : {"max_lr":1e-3, "total_steps" : 500},
+                "max_iter":500,
+                "learning_rate":1e-4, #useless with OneCycleLR
+                "hidden_nn" : architectures.DenseLayers,
+                "hidden_params" :  {"width":8192,"depth":2}           
+                }
+mlrnetw16384 = {"lr_scheduler" : "OneCycleLR",
+                "lr_scheduler_params" : {"max_lr":1e-3, "total_steps" : 500},
+                "max_iter":500,
+                "learning_rate":1e-4, #useless with OneCycleLR
+                "hidden_nn" : architectures.DenseLayers,
+                "hidden_params" :  {"width":16384,"depth":2}           
+                }
+mlrnetw32768 = {"lr_scheduler" : "OneCycleLR",
+                "lr_scheduler_params" : {"max_lr":1e-3, "total_steps" : 500},
+                "max_iter":500,
+                "learning_rate":1e-4, #useless with OneCycleLR
+                "hidden_nn" : architectures.DenseLayers,
+                "hidden_params" :  {"width":32768,"depth":2}           
+                }
