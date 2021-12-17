@@ -46,7 +46,6 @@ def run_experiment(methods,
                                         method_seed, 
                                         hp_name]
                     exp_id = "_".join(list(map(str, exp_description)))
-                    
                     if avoid_duplicates and check_exp_exists(exp_id, output_file, output_repository, check_success = retry_failed_exp):
                         continue
                     start_time = time.time()

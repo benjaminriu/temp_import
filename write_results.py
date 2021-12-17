@@ -19,5 +19,5 @@ def check_exp_exists(exp_id, input_file, input_repository, check_success = False
     if exp_id not in results_df.index.values:
         return False
     else:
-        results_df["success"] = [success == "True" for success in results_df["success"].values]
+        results_df["success"] = [success in [True, "True"] for success in results_df["success"].values]
         return results_df.loc[exp_id]["success"].any() or not check_success

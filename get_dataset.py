@@ -6,7 +6,7 @@ def dataset_loader(dataset_id, name, repository):
     return np.load(repository + name + str(dataset_id) + ".npy")
 def prepare_dataset(dataset, train_size = 0.8, n_features = None, seed= False):
     kwargs = {}
-    if seed or type(seed) == type(0):
+    if seed or seed == 0:
         kwargs["random_state"] = seed
     X, y = dataset[:, :-1], dataset[:, -1]
     X = normalize().fit_transform(X)

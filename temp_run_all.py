@@ -60,13 +60,13 @@ parser.add_argument(
 )
 parser.add_argument(
     '--avoid_duplicates',
-    type=bool,
-    default=True,
+    type=str,
+    default='True',
 )
 parser.add_argument(
     '--retry_failed_exp',
-    type=bool,
-    default=True,
+    type=str,
+    default='True',
 )
 parser.add_argument(
     '--dataset_id',
@@ -92,15 +92,17 @@ parser.add_argument(
 
 args = parser.parse_args()
 options = vars(args)
-print(options)
 
-def fma(arg_val):#format_multitype_arg
-    if type(arg_val) == type('str'):
+def fma(arg_val, numeric = True):#format_multitype_arg
+    if type(arg_val) == type('string'):
         if arg_val in ["None","NONE"]:
             return None
         elif arg_val in ["False","FALSE"]:
             return False
-    
+        elif arg_val in ["True","TRUE"]:
+            return True
+        elif not numeric:
+            return arg_val
         elif "." in arg_val:
             return float(arg_val)
         else:
@@ -120,19 +122,19 @@ if __name__ == '__main__':
     else:
         methods = [args.method]
     methods += ["HPO"] * args.hpo
-    avoid_duplicates = args.avoid_duplicates
-    retry_failed_exp= args.retry_failed_exp
+    avoid_duplicates = fma(args.avoid_duplicates, numeric = False)
+    retry_failed_exp= fma(args.retry_failed_exp, numeric = False)
 
     datasets = [args.dataset_id]
-    dataset_seeds = np.arange(args.dataset_seeds)
-    method_seeds = np.arange(args.method_seeds)
+    dataset_seeds = np.arange(fma(args.dataset_seeds))
+    method_seeds = np.arange(fma(args.method_seeds))
     
     train_size = fma(args.train_size)
     n_features = fma(args.n_features)
     task_name = args.task_name
     
-    interrupt_repository = fma(args.interrupt_repository)
-    interrupt_file_path = fma(args.interrupt_file_path)
+    interrupt_repository = fma(args.interrupt_repository, numeric = False)
+    interrupt_file_path = fma(args.interrupt_file_path, numeric = False)
     
     regression = task_name=="regression"
     run_experiment(get_benchmarked_methods(methods, regression = regression), 
