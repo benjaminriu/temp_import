@@ -1,7 +1,6 @@
 if True:#For code folding
     #For a NVIDIA 2080Ti (11.G of VRAM):
     MAX_GPU_MATRIX_WIDTH = int(4096) #Max width of any matrix; scales quadraticaly with VRAM
-    MAX_GPU_NETWORK_DEPTH = int(6) #Max depth of any network; scales linearly with VRAM
     #For same VRAM size, you can pick a different tradeoff between those two.
     #You could also increase matrix width or network depth beyond these values if you reduce either your batch size or network width accordingly
 
@@ -21,7 +20,8 @@ if True:#For code folding
     from scipy.special import expit as logistic_func
     from abc import ABCMeta, abstractmethod
     import time
-
+    import os
+    
     from sklearn.utils import check_random_state
     from sklearn.utils import shuffle
 
@@ -59,8 +59,7 @@ if True:#For code folding
             yield None
         return dummy_context_mgr
 
-
-    PATH = "tempory_model.pt"#see _save_weights and _load_weights
+    REP, PATH = "./", "tempory_model"#see _initialize_path, _save_weights and _load_weights
     GRID_START, GRID_END, GRID_SIZE = 1e1, 1e7, 101 #see _gridsearch_closeform_param
     MAX_TRAINING_SAMPLES, MAX_TREE_SIZE = int(1e4), 50 #see _stratify_continuous_target (CPU memory and runtime safeguards)
     from sklearn.preprocessing import LabelEncoder
@@ -103,6 +102,7 @@ class MLRNet(BaseEstimator, metaclass=ABCMeta):
         rescale_target,#divide target by std before fitting, bool 
         loss_imbalance,#smaller weights on majority classes, bool
         random_state, #scikit-learn random state, will also set torch generator using a different seed
+        save_repository,#repository in which tempory models will be saved (see PATH and REP)
         verbose #if False mute, if True print at each iteration, if int print if iter%verbose == 0
                 ):
         
@@ -134,6 +134,7 @@ class MLRNet(BaseEstimator, metaclass=ABCMeta):
         self.rescale_target = rescale_target
         self.loss_imbalance = loss_imbalance
         self.random_state  = random_state
+        self.save_repository = save_repository
         self.verbose  = verbose
         
     def fit(self, X, y):
@@ -185,17 +186,32 @@ class MLRNet(BaseEstimator, metaclass=ABCMeta):
         self._random_state = check_random_state(self.random_state)
         self.torch_random_state = torch.Generator(device=device).manual_seed(int(self._random_state.uniform(0,2**31)))
         self.print_record = self.verbose not in [0, False]
-        self.validation = self.validation_fraction not in [False, None]
+        self.validation = self.validation_fraction not in [False, None, 0, 0.]
         self.check_convergence = self.convergence_tol not in [False, None]
         self.check_divergence = self.divergence_tol not in [False, None]
-        self.early_stopping = self.early_stopping_criterion not in [False, None]
+        if self.early_stopping_criterion in [False, None]:
+            self.early_stopping = False
+        else:
+            if self.early_stopping_criterion == "validation" and not self.validation:
+                self.early_stopping = False
+            else: 
+                self.early_stopping = True
         self.minimize_criterion = self.early_stopping_criterion != "validation"
         self.use_closeform = self.closeform_parameter_init not in [0, 0., False, None]
         self.add_permut_term = self.use_closeform and self.n_permut not in [False, None, 0, 0.] and type(self.permutation_scale) not in [type(False), type(None)]
         self.diff_permut_term = self.add_permut_term and self.permutation_scale not in [False, None, 0, 0.]
         self.add_target_rotation = self.target_rotation_scale not in [False, None, 0, 0.] 
         self.add_dithering = self.dithering_scale not in [False, None, 0, 0.] 
+        self._initialize_path()
         self._initialize_record()
+        
+    def _initialize_path(self):
+        path_index = 0
+        self.PATH = PATH+str(path_index)+".pt"
+        while self.PATH in os.listdir(self.save_repository):
+            path_index += 1
+            self.PATH = PATH+str(path_index)+".pt"
+        open(self.save_repository+self.PATH, 'a').close()#create empty file in case two models start training simultaneously
         
     def _initialize_record(self):
         self.record = {"loss":[],"time":[]}
@@ -304,9 +320,11 @@ class MLRNet(BaseEstimator, metaclass=ABCMeta):
                 self.target_std
                 stratify = self._stratify_continuous_target(y/self.target_std)
         else: stratify = None
+        valid_size = int(self.validation_fraction * len(y)) if type(self.validation_fraction)==type(0.2) else self.validation_fraction
+        valid_size = min(MAX_GPU_MATRIX_WIDTH, valid_size)
         X, X_valid, y, y_valid = train_test_split(
             X, y, random_state=self._random_state,
-            test_size=self.validation_fraction,
+            test_size=valid_size,
             stratify=stratify)
         return X, n2t(X_valid), y, y_valid
         
@@ -574,12 +592,14 @@ class MLRNet(BaseEstimator, metaclass=ABCMeta):
         elif bool(self.record[self.early_stopping_criterion][-1]  < self.record[self.early_stopping_criterion][self.best_iter]) == self.minimize_criterion:
             self.best_iter = self.current_iter
         if self.current_iter == self.best_iter:
-            torch.save(self.hidden_layers, PATH)
+
+                
+            torch.save(self.hidden_layers, self.save_repository+self.PATH)
             if self.use_closeform: self.saved_output_weights = torch.clone(self.output_weights)
             
     def _load_weights(self):
         del self.hidden_layers
-        self.hidden_layers = torch.load(PATH)
+        self.hidden_layers = torch.load(self.save_repository+self.PATH)
         if self.use_closeform:
             del self.output_weights
             self.output_weights = self.saved_output_weights
@@ -611,7 +631,9 @@ class MLRNet(BaseEstimator, metaclass=ABCMeta):
  
     def delete_model_weights(self):
         del self.hidden_layers
-        if self.use_closeform: del self.output_weights
+        if self.use_closeform: del self.output_weights   
+        if os.path.exists(self.save_repository+self.PATH):
+            os.remove(self.save_repository+self.PATH)   
         torch.cuda.empty_cache()        
         
 class MLRNetRegressor(RegressorMixin, MLRNet):
@@ -642,6 +664,7 @@ class MLRNetRegressor(RegressorMixin, MLRNet):
         rescale_target = True,
         loss_imbalance = False,
         random_state = None,
+        save_repository = REP,
         verbose = False
                 ):
         super().__init__(
@@ -652,7 +675,7 @@ class MLRNetRegressor(RegressorMixin, MLRNet):
         should_stratify = should_stratify, early_stopping_criterion  = early_stopping_criterion, convergence_tol  = convergence_tol, divergence_tol  = divergence_tol,
         closeform_parameter_init  = closeform_parameter_init, closeform_intercept = closeform_intercept, n_permut  = n_permut, permutation_scale = permutation_scale, dithering_scale = dithering_scale,
         target_rotation_scale =  target_rotation_scale, center_target = center_target, rescale_target = rescale_target, loss_imbalance = loss_imbalance,
-            random_state  = random_state, verbose  = verbose)
+            random_state  = random_state, save_repository = save_repository, verbose  = verbose)
         
     def predict(self, X):
         return self._predict_hidden(X)
@@ -685,6 +708,7 @@ class MLRNetClassifier(ClassifierMixin, MLRNet):
         rescale_target = False,
         loss_imbalance = False,
         random_state = None,
+        save_repository = REP,
         verbose = False
                 ):
         super().__init__(
@@ -695,7 +719,7 @@ class MLRNetClassifier(ClassifierMixin, MLRNet):
         should_stratify= should_stratify, early_stopping_criterion  = early_stopping_criterion, convergence_tol  = convergence_tol, divergence_tol  = divergence_tol,
         closeform_parameter_init  = closeform_parameter_init, closeform_intercept = closeform_intercept, n_permut  = n_permut, permutation_scale = permutation_scale, dithering_scale = dithering_scale,
         target_rotation_scale =  target_rotation_scale, center_target = center_target, rescale_target = rescale_target,loss_imbalance = loss_imbalance,
-        random_state  = random_state, verbose  = verbose) 
+        random_state  = random_state, save_repository = save_repository, verbose  = verbose) 
         
     def predict(self, X):
         if self.multi_class:

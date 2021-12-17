@@ -1,5 +1,10 @@
 import torch
 from functools import partial
+import importlib
+if importlib.util.find_spec('torch.cuda'):
+    device = "cuda" if torch.cuda.is_available() else "cpu"
+else:
+    device = "cpu"
 def initialize_weights(m, init_type = "xavier_uniform_", gain_type='relu'):
     if type(m) == torch.nn.Linear:
         getattr(torch.nn.init, init_type)(m.weight, gain=torch.nn.init.calculate_gain(gain_type))
@@ -14,7 +19,7 @@ class DenseLayers(torch.nn.Module):
                  dropout = 0.,
                  batch_norm = False,
                  initializer_params = {}, 
-                 device = "cuda"):
+                 device = device):
         super(DenseLayers, self).__init__()
         
         layers = [torch.nn.Linear(n_features, width, device = device),  getattr(torch.nn, activation)()]
@@ -32,6 +37,58 @@ class DenseLayers(torch.nn.Module):
     def forward(self, activation):
         return self.model.forward(activation) 
     
+class ResidualLayers(torch.nn.Module):
+    def __init__(self, 
+                 n_features, 
+                 width = 1024, 
+                 depth = 2, 
+                 output = 0,
+                 block_depth = 1,
+                 activation = "ReLU", 
+                 dropout = 0.,
+                 batch_norm = False,
+                 initializer_params = {}, 
+                 device = device):
+        super(ResidualLayers, self).__init__()
+        
+        layers = [torch.nn.Linear(n_features, width, device = device),  getattr(torch.nn, activation)()]
+        if dropout: layers += [torch.nn.Dropout(dropout)]
+        if batch_norm: layers += [torch.nn.BatchNorm1d(width, device = device)]
+        for layer in range(1,depth):
+            layers += [ResBlock(width = width, 
+                 block_depth = block_depth,
+                 activation = "ReLU", 
+                 dropout = dropout,
+                 batch_norm = batch_norm,
+                 initializer_params = initializer_params, 
+                 device = device)]
+        self.model = torch.nn.Sequential(*layers)
+        self.apply(partial(initialize_weights,**initializer_params))
+    
+    def forward(self, activation):
+        return self.model.forward(activation)
+    
+class ResBlock(torch.nn.Module):
+    def __init__(self,
+                 width = 1024, 
+                 block_depth = 2,
+                 activation = "ReLU", 
+                 dropout = 0.,
+                 batch_norm = False,
+                 initializer_params = {}, 
+                 device = device):
+        super(ResBlock, self).__init__()
+        layers = []
+        for layer in range(block_depth):
+            layers += [torch.nn.Linear(width, width, device = device),  getattr(torch.nn, activation)()]
+            if dropout: layers += [torch.nn.Dropout(dropout)]
+            if batch_norm: layers += [torch.nn.BatchNorm1d(width, device = device)]
+        self.model = torch.nn.Sequential(*layers)
+        self.apply(partial(initialize_weights,**initializer_params))
+
+    def forward(self, activation):
+        return self.model.forward(activation)+activation
+    
 class CustomDenseLayers(torch.nn.Module):
     def __init__(self,
                  n_features, 
@@ -41,7 +98,7 @@ class CustomDenseLayers(torch.nn.Module):
                  dropout = 0.,
                  batch_norm = False,
                  initializer_params = {}, 
-                 device = "cuda"):
+                 device = device):
         super(CustomDenseLayers, self).__init__()
         
         layers = [torch.nn.Linear(n_features, hidden_layers[0], device = device),  getattr(torch.nn, activation)()]
@@ -64,7 +121,7 @@ class BasicConvNet(torch.nn.Module): # from github.com/pytorch/examples/blob/mas
                  output = 0,
                  dropout = False,
                  batch_norm = False,
-                 device = "cuda"):
+                 device = device):
         super(BasicConvNet, self).__init__()
         
         self.conv1 = torch.nn.Conv2d(1, 32, 3, 1, device = device)

@@ -1,5 +1,5 @@
 from get_dataset import get_dataset
-from write_results import write_results, check_exp_exists
+from write_results import write_results, check_exp_exists, check_file_exists
 import time
 import numpy as np
 from copy import deepcopy
@@ -16,6 +16,8 @@ def run_experiment(methods,
                    train_size = 0.8,
                    n_features = None,
                    prediction_repository = False,
+                   interrupt_file_path = False,
+                   interrupt_repository = "./",
                    avoid_duplicates = True, 
                    retry_failed_exp= False):
     save_prediction = type(prediction_repository) in [type("./")]
@@ -64,5 +66,15 @@ def run_experiment(methods,
                         continue
                     write_results(result_line, output_file, output_repository, header = header)
 
-                    if save_prediction and success: np.save(prediction_repository+exp_id, prediction) 
+                    if save_prediction and success: np.save(prediction_repository+exp_id, prediction)
                         
+                    if should_interrupt(interrupt_file_path, interrupt_repository):
+                        return False
+    return True 
+
+           
+def should_interrupt(interrupt_file_path, interrupt_repository):
+    if type(interrupt_file_path) == type("interrupt.txt") and interrupt_repository in [type("./")]:
+        return check_file_exists(interrupt_file_path, interrupt_repository)
+    else:
+        return False

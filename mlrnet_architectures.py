@@ -11,7 +11,21 @@ mlrnetHPO = {"lr_scheduler" : "OneCycleLR",
                 "max_iter":200,
                 "learning_rate":1e-3, #useless with OneCycleLR
                 "hidden_nn" : architectures.DenseLayers,
-                "hidden_params" :  {"width":256,"depth":2}           
+                "hidden_params" :  {"width":512,"depth":2}           
+                }
+mlrnetstandardv1 = {"lr_scheduler" : "OneCycleLR",
+                "lr_scheduler_params" : {"max_lr":1e-2, "total_steps" : 200},
+                "max_iter":200,
+                "learning_rate":1e-3, #useless with OneCycleLR
+                "hidden_nn" : architectures.DenseLayers,
+                "hidden_params" :  {"width":512,"depth":2}           
+                }
+mlrnetresblockv1 = {"lr_scheduler" : "OneCycleLR",
+                "lr_scheduler_params" : {"max_lr":1e-2, "total_steps" : 200},
+                "max_iter":200,
+                "learning_rate":1e-3, #useless with OneCycleLR
+                "hidden_nn" : architectures.ResidualLayers,
+                "hidden_params" :  {"width":512,"depth":2,"block_depth":2}           
                 }
 mlrnetslowv1 = {"lr_scheduler" : "OneCycleLR",
                 "lr_scheduler_params" : {"max_lr":1e-3, "total_steps" : 500},

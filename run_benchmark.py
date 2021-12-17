@@ -7,7 +7,7 @@ output_repository = "outputs/"
 benchmark_output_file = "_complete_results.csv"
 prediction_output_file = None
 methods = ["sklearn","mlrnet","catboost","xgboost", "lgbm", "mars"]
-avoid_duplicates = False
+avoid_duplicates = True
 retry_failed_exp= True
 
 benchmark_datasets_reg = np.arange(16) #16 for regression, 16 for classification
