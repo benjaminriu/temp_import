@@ -45,7 +45,18 @@ parser.add_argument(
 parser.add_argument(
     '--method',
     type=str,
-    choices=['RF', 'sklearn', 'mlrnet', "catboost","xgboost", "lgbm", "mars", "all", "best"],
+    choices=['RF', 
+             'sklearn', 
+             'mlrnet', 
+             "regularnet",
+             "fast_mlrnet",
+             "fast_regularnet", 
+             "catboost",
+             "xgboost", 
+             "lgbm", 
+             "mars", 
+             "all", 
+             "best"],
     default="RF",
 )
 parser.add_argument(
@@ -116,9 +127,9 @@ if __name__ == '__main__':
     benchmark_output_file = args.benchmark_output_file
     prediction_output_file = fma(args.prediction_output_file)
     if args.method == "all": 
-        methods = ['sklearn', 'mlrnet', "catboost","xgboost", "lgbm", "mars"]
+        methods = ['sklearn', 'mlrnet', "catboost","xgboost", "lgbm", "mars","regularnet"]
     elif args.method == "best":
-        methods = ["RF",'mlrnet',"catboost","xgboost"]
+        methods = ["RF",'mlrnet',"catboost","xgboost","regularnet"]
     else:
         methods = [args.method]
     methods += ["HPO"] * args.hpo
