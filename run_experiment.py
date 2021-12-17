@@ -73,7 +73,7 @@ def run_experiment(methods,
 
            
 def should_interrupt(interrupt_file_path, interrupt_repository):
-    if type(interrupt_file_path) == type("interrupt.txt") and interrupt_repository in [type("./")]:
+    if type(interrupt_file_path) == type("interrupt.txt") and type(interrupt_repository) in [type("./")]:
         return check_file_exists(interrupt_file_path, interrupt_repository)
     else:
         return False
